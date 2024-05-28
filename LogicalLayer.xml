@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DMSScript options="272" xmlns="http://www.skyline.be/automation">
+	<Name>LogicalLayer</Name>
+	<Description></Description>
+	<Type>Automation</Type>
+	<Author>SKYLINE2\RDM</Author>
+	<CheckSets>FALSE</CheckSets>
+	<Folder></Folder>
+
+	<Protocols>
+		<Protocol id="3">
+			<Description>Logical Layer</Description>
+			<Name>Skyline Logical Layer</Name>
+			<Version>Production</Version>
+			<DefaultElement>Logical Layer</DefaultElement>
+		</Protocol>
+	</Protocols>
+
+	<Memory>
+	</Memory>
+
+	<Parameters>
+		<ScriptParameter id="2" type="string" values="">
+			<Description>Location Filter</Description>
+		</ScriptParameter>
+	</Parameters>
+
+	<Script>
+		<Exe id="1" type="csharp">
+			<Value><![CDATA[[Project:LogicalLayer_1]]]></Value>
+			<!--<Param type="debug">true</Param>-->
+			<Message></Message>
+		</Exe>
+	</Script>
+</DMSScript>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInfo>
+  <DisplayName>Script_LogicalLayer_DIS_AppPackage_DEV</DisplayName>
+  <LastModifiedAt>2024-04-26T14:01:55</LastModifiedAt>
+  <MinDmaVersion>10.0.9.0-9312</MinDmaVersion>
+  <Name>Script_LogicalLayer_DIS_AppPackage_DEV</Name>
+  <AllowMultipleInstalledVersions>false</AllowMultipleInstalledVersions>
+  <Version>0.0.0-CU0</Version>
+</AppInfo>
