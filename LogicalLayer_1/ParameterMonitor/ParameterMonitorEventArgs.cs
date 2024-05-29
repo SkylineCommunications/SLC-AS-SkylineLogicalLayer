@@ -12,5 +12,7 @@
         public Element Element { get; set; }
 
         public ParameterInfo Parameter { get; set; }
+
+        public bool IsDiscreet { get; set; }
     }
 }

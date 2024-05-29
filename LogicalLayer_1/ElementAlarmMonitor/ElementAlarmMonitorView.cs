@@ -171,6 +171,11 @@ namespace LogicalLayer_1.ElementAlarmMonitor
 
         private void Parameter_Changed(object sender, DropDown.DropDownChangedEventArgs e)
         {
+            if (Parameter.Selected == "[Element Alarm State]")
+            {
+                return;
+            }
+
             var selectedParameter = _parameters.First(x => x.Description == Parameter.Selected);
             if (selectedParameter.ParentTable == null)
             {

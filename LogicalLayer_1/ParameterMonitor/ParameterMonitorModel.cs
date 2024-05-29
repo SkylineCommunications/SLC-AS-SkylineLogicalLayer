@@ -19,6 +19,6 @@
 
         public int ParameterId { get; set; }
 
-        public string Index { get; set; }
+        public bool ParameterIsDiscreet { get; set; }
     }
 }

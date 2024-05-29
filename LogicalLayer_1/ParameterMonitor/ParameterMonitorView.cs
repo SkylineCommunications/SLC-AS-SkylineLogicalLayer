@@ -98,6 +98,8 @@ namespace LogicalLayer_1.ParameterMonitor
 
         public Button Close { get; set; }
 
+        private bool _isDiscreet { get; set; }
+
         private void Back_Pressed(object sender, EventArgs e)
         {
             OnBackPressed?.Invoke(sender, e);
@@ -145,6 +147,7 @@ namespace LogicalLayer_1.ParameterMonitor
                 ParameterMonitorName = ParameterMonitorName.Text,
                 Element = _engine.FindElement(Element.Selected),
                 Parameter = _parameters.First(x => x.Description == Parameter.Selected),
+                IsDiscreet = _isDiscreet,
             });
         }
 
@@ -161,6 +164,7 @@ namespace LogicalLayer_1.ParameterMonitor
         private void Parameter_Changed(object sender, DropDown.DropDownChangedEventArgs e)
         {
             var selectedParameter = _parameters.First(x => x.Description == Parameter.Selected);
+            _isDiscreet = selectedParameter.Discreets.Any();
             if (selectedParameter.ParentTable == null)
             {
                 Index.Selected = String.Empty;

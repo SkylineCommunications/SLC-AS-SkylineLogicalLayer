@@ -270,6 +270,7 @@ namespace LogicalLayer_1
                 ElementElementId = e.Element.ElementId,
                 ParameterDescription = e.Parameter.Description,
                 ParameterId = e.Parameter.ID,
+                ParameterIsDiscreet = e.Parameter.IsDiscreet,
             }));
         }
 
