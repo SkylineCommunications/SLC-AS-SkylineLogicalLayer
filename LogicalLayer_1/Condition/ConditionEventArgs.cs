@@ -13,5 +13,9 @@ namespace LogicalLayer_1.Condition
         public string Condition { get; set; }
 
         public bool Visualize { get; set; }
+
+        public bool AutomaticCorrection { get; set; }
+
+        public string CorrectiveActionScript { get; set; }
     }
 }

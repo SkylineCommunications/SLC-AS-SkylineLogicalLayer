@@ -1,8 +1,10 @@
 ﻿using LogicalLayer_1.ParameterMonitor;
 using LogicalLayer_1.Utils;
+using Newtonsoft.Json;
 using Skyline.DataMiner.Automation;
 using Skyline.DataMiner.CICD.Parsers.Common.Xml;
 using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
+using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
 using Skyline.DataMiner.Core.DataMinerSystem.Automation;
 using Skyline.DataMiner.Core.DataMinerSystem.Common;
 using Skyline.DataMiner.Net.Messages;
@@ -28,8 +30,9 @@ namespace LogicalLayer_1.ElementAlarmMonitor
         private ParameterInfo _table;
         private List<ParameterInfo> _parameters;
         private IDms dms;
+        private bool _IsUpdate;
 
-        public ElementAlarmMonitorView(IEngine engine)
+        public ElementAlarmMonitorView(IEngine engine, string data)
             : base(engine)
         {
             _engine = engine;
@@ -67,19 +70,57 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             {
                 Width = 200,
             };
+            Update = new Button("Update")
+            {
+                Width = 200,
+            };
             Add.Pressed += (s, e) => OnAdd(s, e);
             Back.Pressed += Back_Pressed;
+            Update.Pressed += Update_Pressed;
             Element.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElements().Select(x => x.Name).OrderBy(x => x)));
             Element.Selected = LayoutDesigner.OptionSelected;
             Element.Changed += Element_Changed;
             Parameter.Changed += Parameter_Changed;
             Close.Pressed += (s, e) => OnClosePressed?.Invoke(this, EventArgs.Empty);
+            if (!String.IsNullOrWhiteSpace(data) && data != "New")
+            {
+                _IsUpdate = true;
+                ElementAlarmMonitorName.IsEnabled = false;
+                if (data.Contains("ElementAlarmMonitorModel"))
+                {
+                    ElementAlarmMonitorModel model = JsonConvert.DeserializeObject<ElementAlarmMonitorModel>(data);
+                    ElementAlarmMonitorName.Text = model.ElementAlarmMonitorName;
+                    Element.Selected = model.ElementName;
+                    GetParameters(model.ElementName);
+                    var options = FillOptions();
+                    Parameter.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(options.OrderBy(x => x)));
+                    Parameter.Selected = model.ParameterDescription;
+                }
+                else
+                {
+                    ElementCellAlarmMonitorModel model = JsonConvert.DeserializeObject<ElementCellAlarmMonitorModel>(data);
+                    ElementAlarmMonitorName.Text = model.CellMonitorName;
+                    Element.Selected = model.ElementName;
+                    GetParameters(model.ElementName);
+                    var options = FillOptions();
+                    Parameter.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(options.OrderBy(x => x)));
+                    Parameter.Selected = model.ColumnDescription;
+                    _table = _parameters.First(x => x.Description == Parameter.Selected).ParentTable;
+                    Index.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElement(Element.Selected).GetTable(_table.ID).GetDisplayKeys().OrderBy(x => x)));
+                    Index.Selected = model.DisplayKey;
+                }
+            }
+
             SetupLayout();
         }
 
         public event EventHandler<ElementAlarmMonitorEventArgs> OnAddPressed;
 
+        public event EventHandler<ElementAlarmMonitorEventArgs> OnUpdatePressed;
+
         public event EventHandler<ElementCellAlarmMonitorEventArgs> OnAddCellPressed;
+
+        public event EventHandler<ElementCellAlarmMonitorEventArgs> OnUpdateCellPressed;
 
         public event EventHandler OnBackPressed;
 
@@ -98,6 +139,8 @@ namespace LogicalLayer_1.ElementAlarmMonitor
         public Button Back { get; set; }
 
         public Button Close { get; set; }
+
+        public Button Update { get; set; }
 
         private void Back_Pressed(object sender, EventArgs e)
         {
@@ -148,11 +191,61 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             }
         }
 
+        private void Update_Pressed(object sender, EventArgs e)
+        {
+            if (String.IsNullOrWhiteSpace(ElementAlarmMonitorName.Text))
+            {
+                return;
+            }
+
+            if (Element.Selected == LayoutDesigner.OptionSelected)
+            {
+                return;
+            }
+
+            if (Parameter.Selected == LayoutDesigner.OptionSelected)
+            {
+                return;
+            }
+
+            if (String.IsNullOrWhiteSpace(Index.Selected) || Index.Selected == LayoutDesigner.OptionSelected)
+            {
+                OnUpdatePressed?.Invoke(this, new ElementAlarmMonitorEventArgs
+                {
+                    ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
+                    Element = _engine.FindElement(Element.Selected),
+                    ElementParameter = Parameter.Selected.StartsWith("[") ? Parameter.Selected : String.Empty,
+                    Parameter = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected),
+                    Index = Index.Selected,
+                });
+            }
+            else
+            {
+                var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
+                var column = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected);
+                OnUpdateCellPressed?.Invoke(this, new ElementCellAlarmMonitorEventArgs
+                {
+                    ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
+                    Element = _engine.FindElement(Element.Selected),
+                    ElementParameter = String.Empty,
+                    Table = column.ParentTable,
+                    Column = column,
+                    Index = primaryKey,
+                });
+            }
+        }
+
         private void Element_Changed(object sender, DropDown.DropDownChangedEventArgs e)
         {
-            _element = _engine.FindElement(Element.Selected);
-            var protocol = _element.Protocol;
-            _parameters = protocol.FilterParameters(ParameterFilterOptions.MonitoredOnly);
+            GetParameters(e.Selected);
+            var options = FillOptions();
+
+            Parameter.SetOptions(options.OrderBy(x => x));
+            Parameter.Selected = LayoutDesigner.OptionSelected;
+        }
+
+        private List<string> FillOptions()
+        {
             List<string> options = new List<string>();
             if (_parameters.Count > 0)
             {
@@ -165,20 +258,23 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 options.Add("No Alarm Template Assigned");
             }
 
-            Parameter.SetOptions(options.OrderBy(x => x));
-            Parameter.Selected = LayoutDesigner.OptionSelected;
+            return options;
         }
 
         private void Parameter_Changed(object sender, DropDown.DropDownChangedEventArgs e)
         {
             if (Parameter.Selected == "[Element Alarm State]")
             {
+                _table = null;
+                Index.Selected = String.Empty;
+                SetupLayout();
                 return;
             }
 
             var selectedParameter = _parameters.First(x => x.Description == Parameter.Selected);
             if (selectedParameter.ParentTable == null)
             {
+                _table = null;
                 Index.Selected = String.Empty;
             }
             else
@@ -188,10 +284,20 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 Index.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(_element.GetTableDisplayKeys(_table.Name).OrderBy(x => x)));
                 Index.Selected = LayoutDesigner.OptionSelected;
             }
+
+            SetupLayout();
+        }
+
+        private void GetParameters(string elementName)
+        {
+            _element = _engine.FindElement(elementName);
+            var protocol = _element.Protocol;
+            _parameters = protocol.FilterParameters(ParameterFilterOptions.MonitoredOnly);
         }
 
         private void SetupLayout()
         {
+            Clear();
             int rowNumber = 0;
 
             LayoutDesigner.SetComponentsOnRow(
@@ -209,15 +315,28 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { _parameterName, Parameter });
 
-            LayoutDesigner.SetComponentsOnRow(
-                dialog: this,
-                row: ++rowNumber,
-                orderedWidgets: new Widget[] { _index, Index });
+            if (_table != null)
+            {
+                LayoutDesigner.SetComponentsOnRow(
+                    dialog: this,
+                    row: ++rowNumber,
+                    orderedWidgets: new Widget[] { _index, Index });
+            }
 
-            LayoutDesigner.SetComponentsOnRow(
-                dialog: this,
-                row: ++rowNumber,
-                orderedWidgets: new Widget[] { Back, Add });
+            if (_IsUpdate)
+            {
+                LayoutDesigner.SetComponentsOnRow(
+                    dialog: this,
+                    row: ++rowNumber,
+                    orderedWidgets: new Widget[] { Back, Update });
+            }
+            else
+            {
+                LayoutDesigner.SetComponentsOnRow(
+                    dialog: this,
+                    row: ++rowNumber,
+                    orderedWidgets: new Widget[] { Back, Add });
+            }
 
             LayoutDesigner.SetComponentsOnRow(
                 dialog: this,

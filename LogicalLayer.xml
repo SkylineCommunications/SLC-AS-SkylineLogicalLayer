@@ -23,6 +23,9 @@
 		<ScriptParameter id="2" type="string" values="">
 			<Description>Location Filter</Description>
 		</ScriptParameter>
+		<ScriptParameter id="4" type="string" values="">
+			<Description>Data</Description>
+		</ScriptParameter>
 	</Parameters>
 
 	<Script>

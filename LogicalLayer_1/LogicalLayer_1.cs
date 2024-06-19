@@ -62,11 +62,16 @@ namespace LogicalLayer_1
     using LogicalLayer_1.ViewAlarmMonitor;
     using Newtonsoft.Json;
     using Skyline.DataMiner.Automation;
+    using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
     using Skyline.DataMiner.Core.DataMinerSystem.Automation;
+    using Skyline.DataMiner.Core.DataMinerSystem.Common.Selectors;
+    using Skyline.DataMiner.Core.DataMinerSystem.Common;
     using Skyline.DataMiner.Net.Messages;
     using Skyline.DataMiner.Net.Serialization;
     using Skyline.DataMiner.Utils.InteractiveAutomationScript;
     using static System.Net.Mime.MediaTypeNames;
+    using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer;
+    using LogicalLayer_1.StaticVariable;
 
     /// <summary>
     /// Represents a DataMiner Automation script.
@@ -76,13 +81,7 @@ namespace LogicalLayer_1
     {
         private InteractiveController app;
         private IEngine engine;
-
-        public enum ElementParameter
-        {
-            None = 0,
-            ElementAlarmState = -1,
-            ElementTimeout = -2,
-        }
+        private ISkylineLogicalLayer element;
 
         /// <summary>
         /// The script entry point.
@@ -128,26 +127,34 @@ namespace LogicalLayer_1
         private void RunSafe(IEngine engine)
         {
             var locationFilter = engine.GetScriptParam("Location Filter");
+            var data = engine.GetScriptParam("Data").Value;
+            var dummy = engine.GetDummy("Logical Layer");
+            element = new SkylineLogicalLayer(engine.GetUserConnection(), dummy.ElementName);
             switch (locationFilter.Value)
             {
                 case "Parameter":
-                    ParameterMonitorView parameterMonitorView = ConfigureParameterMonitorView(engine);
+                    ParameterMonitorView parameterMonitorView = ConfigureParameterMonitorView(data);
                     app.Run(parameterMonitorView);
                     break;
 
                 case "Element":
-                    ElementAlarmMonitorView elementAlarmMonitorView = ConfigureElementMonitorView(engine);
+                    ElementAlarmMonitorView elementAlarmMonitorView = ConfigureElementMonitorView(data);
                     app.Run(elementAlarmMonitorView);
                     break;
 
                 case "View":
-                    ViewAlarmMonitorView viewAlarmMonitorView = ConfigureViewMonitorView(engine);
+                    ViewAlarmMonitorView viewAlarmMonitorView = ConfigureViewMonitorView(data);
                     app.Run(viewAlarmMonitorView);
                     break;
 
                 case "Condition":
-                    ConditionView conditionView = ConfigureConditionView();
+                    ConditionView conditionView = ConfigureConditionView(data);
                     app.Run(conditionView);
+                    break;
+
+                case "Static Variable":
+                    StaticVariableView staticVariableView = ConfigureStaticVariableView();
+                    app.Run(staticVariableView);
                     break;
 
                 default:
@@ -171,65 +178,80 @@ namespace LogicalLayer_1
             return chooseObjectView;
         }
 
-        private ParameterMonitorView ConfigureParameterMonitorView(IEngine engine)
+        private ParameterMonitorView ConfigureParameterMonitorView(string data)
         {
-            var parameterMonitorView = new ParameterMonitorView(engine);
+            var parameterMonitorView = new ParameterMonitorView(engine, data);
             parameterMonitorView.OnAddParameterPressed += ParameterMonitorView_OnAddPressed;
             parameterMonitorView.OnAddCellPressed += ParameterMonitorView_OnAddCellPressed;
             parameterMonitorView.OnBackPressed += ParameterMonitorView_OnBackPressed;
             parameterMonitorView.OnClosePressed += OnClosePressed;
+            parameterMonitorView.OnUpdateParameterPressed += ParameterMonitorView_OnUpdateParameterPressed;
+            parameterMonitorView.OnUpdateCellPressed += ParameterMonitorView_OnUpdateCellPressed;
             return parameterMonitorView;
         }
 
-        private ElementAlarmMonitorView ConfigureElementMonitorView(IEngine engine)
+        private ElementAlarmMonitorView ConfigureElementMonitorView(string data)
         {
-            var elementAlarmMonitorView = new ElementAlarmMonitorView(engine);
+            var elementAlarmMonitorView = new ElementAlarmMonitorView(engine, data);
             elementAlarmMonitorView.OnAddPressed += ElementAlarmMonitorView_OnAddPressed;
             elementAlarmMonitorView.OnAddCellPressed += ElementCellAlarmMonitorView_OnAddCellPressed;
             elementAlarmMonitorView.OnBackPressed += ElementAlarmMonitorView_OnBackPressed;
             elementAlarmMonitorView.OnClosePressed += OnClosePressed;
+            elementAlarmMonitorView.OnUpdatePressed += ElementAlarmMonitorView_OnUpdatePressed;
+            elementAlarmMonitorView.OnUpdateCellPressed += ElementAlarmMonitorView_OnUpdateCellPressed;
             return elementAlarmMonitorView;
         }
 
-        private ViewAlarmMonitorView ConfigureViewMonitorView(IEngine engine)
+        private ViewAlarmMonitorView ConfigureViewMonitorView(string data)
         {
-            var viewAlarmMonitorView = new ViewAlarmMonitorView(engine);
+            var viewAlarmMonitorView = new ViewAlarmMonitorView(engine, data);
             viewAlarmMonitorView.OnAddPressed += ViewAlarmMonitorView_OnAddPressed;
             viewAlarmMonitorView.OnBackPressed += ElementAlarmMonitorView_OnBackPressed;
             viewAlarmMonitorView.OnClosePressed += OnClosePressed;
+            viewAlarmMonitorView.OnUpdatePressed += ViewAlarmMonitorView_OnUpdatePressed;
             return viewAlarmMonitorView;
         }
 
-        private ConditionView ConfigureConditionView()
+        private ConditionView ConfigureConditionView(string data)
         {
-            var conditionView = new ConditionView(engine);
+            var conditionView = new ConditionView(engine, data);
             conditionView.OnAddConditionPressed += ConditionView_OnAddConditionPressed;
             conditionView.OnBackPressed += ConditionView_OnBackPressed;
             conditionView.OnClosePressed += OnClosePressed;
+            conditionView.OnUpdateConditionPressed += ConditionView_OnUpdateConditionPressed;
             return conditionView;
+        }
+
+        private StaticVariableView ConfigureStaticVariableView()
+        {
+            var staticVariableView = new StaticVariableView(engine);
+            staticVariableView.OnAddPressed += StaticVariableView_OnAddPressed;
+            staticVariableView.OnBackPressed += StaticVariableView_OnBackPressed;
+            staticVariableView.OnClosePressed += OnClosePressed;
+            return staticVariableView;
         }
 
         private void ChooseObjectView_OnParameterMonitorPressed(object sender, EventArgs e)
         {
-            var parameterMonitorView = ConfigureParameterMonitorView(engine);
+            var parameterMonitorView = ConfigureParameterMonitorView(String.Empty);
             app.ShowDialog(parameterMonitorView);
         }
 
         private void ChooseObjectView_OnElementAlarmMonitorPressed(object sender, EventArgs e)
         {
-            var elementAlarmMonitorView = ConfigureElementMonitorView(engine);
+            var elementAlarmMonitorView = ConfigureElementMonitorView(String.Empty);
             app.ShowDialog(elementAlarmMonitorView);
         }
 
         private void ChooseObjectView_OnViewMonitorPressed(object sender, EventArgs e)
         {
-            var viewAlarmMonitorView = ConfigureViewMonitorView(engine);
+            var viewAlarmMonitorView = ConfigureViewMonitorView(String.Empty);
             app.ShowDialog(viewAlarmMonitorView);
         }
 
         private void ChooseObjectView_OnConditionPressed(object sender, EventArgs e)
         {
-            ConditionView conditionView = ConfigureConditionView();
+            ConditionView conditionView = ConfigureConditionView(String.Empty);
             app.ShowDialog(conditionView);
         }
 
@@ -250,7 +272,32 @@ namespace LogicalLayer_1
                 TableId = e.Table.ID,
                 ColumnDescription = e.Column.Description,
                 ColumnId = e.Column.ID,
+                ColumnIsDiscreet = e.Column.IsDiscreet,
                 Index = e.Index,
+            }));
+        }
+
+        private void ParameterMonitorView_OnUpdateCellPressed(object sender, CellMonitorEventArgs e)
+        {
+            var dummy = engine.GetDummy("Logical Layer");
+            if (dummy == null)
+            {
+                return;
+            }
+
+            dummy.SetParameter(3, JsonConvert.SerializeObject(new CellMonitorModel
+            {
+                CellMonitorName = e.CellMonitorName,
+                ElementName = e.Element.ElementName,
+                ElementDmaId = e.Element.DmaId,
+                ElementElementId = e.Element.ElementId,
+                TableId = e.Table.ID,
+                ColumnDescription = e.Column.Description,
+                ColumnId = e.Column.ID,
+                ColumnIsDiscreet = e.Column.IsDiscreet,
+                DisplayKey = e.DisplayKey,
+                Index = e.Index,
+                IsUpdateMessage = true,
             }));
         }
 
@@ -274,6 +321,27 @@ namespace LogicalLayer_1
             }));
         }
 
+        private void ParameterMonitorView_OnUpdateParameterPressed(object sender, ParameterMonitorEventArgs e)
+        {
+            var dummy = engine.GetDummy("Logical Layer");
+            if (dummy == null)
+            {
+                return;
+            }
+
+            dummy.SetParameter(3, JsonConvert.SerializeObject(new ParameterMonitorModel
+            {
+                ParameterMonitorName = e.ParameterMonitorName,
+                ElementName = e.Element.ElementName,
+                ElementDmaId = e.Element.DmaId,
+                ElementElementId = e.Element.ElementId,
+                ParameterDescription = e.Parameter.Description,
+                ParameterId = e.Parameter.ID,
+                ParameterIsDiscreet = e.Parameter.IsDiscreet,
+                IsUpdateMessage = true,
+            }));
+        }
+
         private void ParameterMonitorView_OnBackPressed(object sender, EventArgs e)
         {
             ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
@@ -294,7 +362,44 @@ namespace LogicalLayer_1
                 ElementName = e.Element.ElementName,
                 ElementDmaId = e.Element.DmaId,
                 ElementElementId = e.Element.ElementId,
-                Index = e.Index,
+            };
+
+            if (e.Parameter == null)
+            {
+                elementAlarmMonitorModel.ParameterDescription = String.Empty;
+                elementAlarmMonitorModel.ParameterId = 0;
+                switch (e.ElementParameter)
+                {
+                    case "[Element Alarm State]":
+                        elementAlarmMonitorModel.ElementParameter = ElementParameter.ElementAlarmState;
+                        break;
+                }
+            }
+            else
+            {
+                elementAlarmMonitorModel.ParameterDescription = e.Parameter.Description;
+                elementAlarmMonitorModel.ParameterId = e.Parameter.ID;
+                elementAlarmMonitorModel.ElementParameter = ElementParameter.None;
+            }
+
+            dummy.SetParameter(3, JsonConvert.SerializeObject(elementAlarmMonitorModel));
+        }
+
+        private void ElementAlarmMonitorView_OnUpdatePressed(object sender, ElementAlarmMonitorEventArgs e)
+        {
+            var dummy = engine.GetDummy("Logical Layer");
+            if (dummy == null)
+            {
+                return;
+            }
+
+            var elementAlarmMonitorModel = new ElementAlarmMonitorModel()
+            {
+                ElementAlarmMonitorName = e.ElementAlarmMonitorName,
+                ElementName = e.Element.ElementName,
+                ElementDmaId = e.Element.DmaId,
+                ElementElementId = e.Element.ElementId,
+                IsUpdateMessage = true,
             };
 
             if (e.Parameter == null)
@@ -341,6 +446,30 @@ namespace LogicalLayer_1
             dummy.SetParameter(3, JsonConvert.SerializeObject(elementAlarmMonitorModel));
         }
 
+        private void ElementAlarmMonitorView_OnUpdateCellPressed(object sender, ElementCellAlarmMonitorEventArgs e)
+        {
+            var dummy = engine.GetDummy("Logical Layer");
+            if (dummy == null)
+            {
+                return;
+            }
+
+            var elementAlarmMonitorModel = new ElementCellAlarmMonitorModel()
+            {
+                CellMonitorName = e.ElementAlarmMonitorName,
+                ElementName = e.Element.ElementName,
+                ElementDmaId = e.Element.DmaId,
+                ElementElementId = e.Element.ElementId,
+                Index = e.Index,
+                IsUpdateMessage = true,
+            };
+
+            elementAlarmMonitorModel.TableId = e.Table.ID;
+            elementAlarmMonitorModel.ColumnDescription = e.Column.Description;
+            elementAlarmMonitorModel.ColumnId = e.Column.ID;
+            dummy.SetParameter(3, JsonConvert.SerializeObject(elementAlarmMonitorModel));
+        }
+
         private void ElementAlarmMonitorView_OnBackPressed(object sender, EventArgs e)
         {
             ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
@@ -355,7 +484,7 @@ namespace LogicalLayer_1
                 return;
             }
 
-            var elementAlarmMonitorModel = new ViewAlarmMonitorModel()
+            var viewAlarmMonitorModel = new ViewAlarmMonitorModel()
             {
                 ViewAlarmMonitorName = e.ViewAlarmMonitorName,
                 ViewName = e.View.Name,
@@ -363,7 +492,27 @@ namespace LogicalLayer_1
                 Parameter = e.ViewParameter,
             };
 
-            dummy.SetParameter(3, JsonConvert.SerializeObject(elementAlarmMonitorModel));
+            dummy.SetParameter(3, JsonConvert.SerializeObject(viewAlarmMonitorModel));
+        }
+
+        private void ViewAlarmMonitorView_OnUpdatePressed(object sender, ViewAlarmMonitorEventArgs e)
+        {
+            var dummy = engine.GetDummy("Logical Layer");
+            if (dummy == null)
+            {
+                return;
+            }
+
+            var viewAlarmMonitorModel = new ViewAlarmMonitorModel()
+            {
+                ViewAlarmMonitorName = e.ViewAlarmMonitorName,
+                ViewName = e.View.Name,
+                ViewId = e.View.Id,
+                Parameter = e.ViewParameter,
+                IsUpdateMessage = true,
+            };
+
+            dummy.SetParameter(3, JsonConvert.SerializeObject(viewAlarmMonitorModel));
         }
 
         private void ViewAlarmMonitorView_OnBackPressed(object sender, EventArgs e)
@@ -391,6 +540,48 @@ namespace LogicalLayer_1
                 ConditionName = e.ConditionName,
                 Condition = e.Condition,
                 Visualize = e.Visualize,
+                AutomaticCorrection = e.AutomaticCorrection,
+                CorrectiveActionScript = e.CorrectiveActionScript,
+            }));
+        }
+
+        private void ConditionView_OnUpdateConditionPressed(object sender, ConditionEventArgs e)
+        {
+            var dummy = engine.GetDummy("Logical Layer");
+            if (dummy == null)
+            {
+                return;
+            }
+
+            dummy.SetParameter(3, JsonConvert.SerializeObject(new ConditionModel
+            {
+                ConditionName = e.ConditionName,
+                Condition = e.Condition,
+                Visualize = e.Visualize,
+                AutomaticCorrection = e.AutomaticCorrection,
+                CorrectiveActionScript = e.CorrectiveActionScript,
+                IsUpdateMessage = true,
+            }));
+        }
+
+        private void StaticVariableView_OnBackPressed(object sender, EventArgs e)
+        {
+            ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
+            app.ShowDialog(chooseObjectView);
+        }
+
+        private void StaticVariableView_OnAddPressed(object sender, StaticVariableEventArgs e)
+        {
+            var dummy = engine.GetDummy("Logical Layer");
+            if (dummy == null)
+            {
+                return;
+            }
+
+            dummy.SetParameter(3, JsonConvert.SerializeObject(new StaticVariableModel
+            {
+                Name = e.Name,
+                Value = e.Value,
             }));
         }
 

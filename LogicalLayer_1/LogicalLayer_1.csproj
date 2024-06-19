@@ -19,6 +19,7 @@
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="Skyline.DataMiner.CICD.Parsers.Protocol" Version="1.0.11" />
+		<PackageReference Include="Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer" Version="1.0.0.9" />
 		<PackageReference Include="Skyline.DataMiner.Core.DataMinerSystem.Automation" Version="1.1.1.9" />
 		<PackageReference Include="Skyline.DataMiner.Core.DataMinerSystem.Common" Version="1.1.1.9" />
 		<PackageReference Include="Skyline.DataMiner.Dev.Automation" Version="10.2.0.25" />

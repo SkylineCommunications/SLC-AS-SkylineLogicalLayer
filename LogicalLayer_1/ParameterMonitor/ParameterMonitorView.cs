@@ -1,18 +1,14 @@
 ﻿using LogicalLayer_1.Utils;
+using Newtonsoft.Json;
 using Skyline.DataMiner.Automation;
-using Skyline.DataMiner.CICD.Parsers.Common.Xml;
-using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
+using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
 using Skyline.DataMiner.Core.DataMinerSystem.Automation;
 using Skyline.DataMiner.Core.DataMinerSystem.Common;
 using Skyline.DataMiner.Net.Messages;
 using Skyline.DataMiner.Utils.InteractiveAutomationScript;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Remoting.Channels;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LogicalLayer_1.ParameterMonitor
 {
@@ -27,8 +23,11 @@ namespace LogicalLayer_1.ParameterMonitor
         private ParameterInfo _table;
         private List<ParameterInfo> _parameters;
         private IDms dms;
+        private List<IDmsElement> _elements;
+        private bool _isDiscreet;
+        private bool _IsUpdate;
 
-        public ParameterMonitorView(IEngine engine)
+        public ParameterMonitorView(IEngine engine, string data)
             : base(engine)
         {
             _engine = engine;
@@ -62,23 +61,64 @@ namespace LogicalLayer_1.ParameterMonitor
             {
                 Width = 200,
             };
+            Update = new Button("Update")
+            {
+                Width = 200,
+            };
             Close = new Button("Close")
             {
                 Width = 200,
             };
             Add.Pressed += (s, e) => OnAdd(s, e);
             Back.Pressed += Back_Pressed;
-            Element.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElements().Select(x => x.Name).OrderBy(x => x)));
+            Update.Pressed += Update_Pressed;
+            _elements = dms.GetElements().ToList();
+            Element.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(_elements.Select(x => x.Name).OrderBy(x => x)));
             Element.Selected = LayoutDesigner.OptionSelected;
             Element.Changed += Element_Changed;
             Parameter.Changed += Parameter_Changed;
             Close.Pressed += (s, e) => OnClosePressed?.Invoke(this, EventArgs.Empty);
+            if (!String.IsNullOrWhiteSpace(data) && data != "New")
+            {
+                ParameterMonitorName.IsEnabled = false;
+                _IsUpdate = true;
+                if (data.Contains("ParameterMonitorModel"))
+                {
+                    ParameterMonitorModel model = JsonConvert.DeserializeObject<ParameterMonitorModel>(data);
+                    ParameterMonitorName.Text = model.ParameterMonitorName;
+                    Element.Selected = model.ElementName;
+                    GetParameters(model.ElementName);
+                    var displayedReadParams = _parameters.Where(x => !x.WriteType && !String.IsNullOrWhiteSpace(x.Description));
+                    Parameter.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(displayedReadParams.Select(x => x.Description).OrderBy(x => x)));
+                    Parameter.Selected = model.ParameterDescription;
+                    _isDiscreet = model.ParameterIsDiscreet;
+                }
+                else
+                {
+                    CellMonitorModel model = JsonConvert.DeserializeObject<CellMonitorModel>(data);
+                    ParameterMonitorName.Text = model.CellMonitorName;
+                    Element.Selected = model.ElementName;
+                    GetParameters(model.ElementName);
+                    var displayedReadParams = _parameters.Where(x => !x.WriteType && !String.IsNullOrWhiteSpace(x.Description));
+                    Parameter.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(displayedReadParams.Select(x => x.Description).OrderBy(x => x)));
+                    Parameter.Selected = model.ColumnDescription;
+                    _table = _parameters.First(x => x.Description == Parameter.Selected).ParentTable;
+                    Index.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElement(Element.Selected).GetTable(_table.ID).GetDisplayKeys().OrderBy(x => x)));
+                    Index.Selected = model.DisplayKey;
+                    _isDiscreet = model.ColumnIsDiscreet;
+                }
+            }
+
             SetupLayout();
         }
 
         public event EventHandler<ParameterMonitorEventArgs> OnAddParameterPressed;
 
+        public event EventHandler<ParameterMonitorEventArgs> OnUpdateParameterPressed;
+
         public event EventHandler<CellMonitorEventArgs> OnAddCellPressed;
+
+        public event EventHandler<CellMonitorEventArgs> OnUpdateCellPressed;
 
         public event EventHandler OnBackPressed;
 
@@ -98,7 +138,7 @@ namespace LogicalLayer_1.ParameterMonitor
 
         public Button Close { get; set; }
 
-        private bool _isDiscreet { get; set; }
+        public Button Update { get; set; }
 
         private void Back_Pressed(object sender, EventArgs e)
         {
@@ -108,11 +148,6 @@ namespace LogicalLayer_1.ParameterMonitor
         private void OnAdd(object sender, EventArgs e)
         {
             if (String.IsNullOrWhiteSpace(ParameterMonitorName.Text))
-            {
-                return;
-            }
-
-            if (ParameterMonitorName.Text.Contains(" "))
             {
                 return;
             }
@@ -138,6 +173,8 @@ namespace LogicalLayer_1.ParameterMonitor
                     Table = parameter.ParentTable,
                     Column = _parameters.First(x => x.Description == Parameter.Selected),
                     Index = primaryKey,
+                    DisplayKey = Index.Selected,
+                    IsDiscreet = _isDiscreet,
                 });
                 return;
             }
@@ -151,11 +188,47 @@ namespace LogicalLayer_1.ParameterMonitor
             });
         }
 
+        private void Update_Pressed(object sender, EventArgs e)
+        {
+            if (Element.Selected == LayoutDesigner.OptionSelected)
+            {
+                return;
+            }
+
+            if (Parameter.Selected == LayoutDesigner.OptionSelected)
+            {
+                return;
+            }
+
+            if (!String.IsNullOrWhiteSpace(Index.Selected) && Index.Selected != LayoutDesigner.OptionSelected)
+            {
+                var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
+                var parameter = _parameters.First(x => x.Description == Parameter.Selected);
+                OnUpdateCellPressed?.Invoke(this, new CellMonitorEventArgs
+                {
+                    CellMonitorName = ParameterMonitorName.Text,
+                    Element = _engine.FindElement(Element.Selected),
+                    Table = parameter.ParentTable,
+                    Column = _parameters.First(x => x.Description == Parameter.Selected),
+                    Index = primaryKey,
+                    DisplayKey = Index.Selected,
+                    IsDiscreet = _isDiscreet,
+                });
+                return;
+            }
+
+            OnUpdateParameterPressed?.Invoke(this, new ParameterMonitorEventArgs
+            {
+                ParameterMonitorName = ParameterMonitorName.Text,
+                Element = _engine.FindElement(Element.Selected),
+                Parameter = _parameters.First(x => x.Description == Parameter.Selected),
+                IsDiscreet = _isDiscreet,
+            });
+        }
+
         private void Element_Changed(object sender, DropDown.DropDownChangedEventArgs e)
         {
-            _element = _engine.FindElement(Element.Selected);
-            var protocol = _element.Protocol;
-            _parameters = protocol.FilterParameters(ParameterFilterOptions.HideDefaultParameters);
+            GetParameters(Element.Selected);
             var displayedReadParams = _parameters.Where(x => !x.WriteType && !String.IsNullOrWhiteSpace(x.Description));
             Parameter.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(displayedReadParams.Select(x => x.Description).OrderBy(x => x)));
             Parameter.Selected = LayoutDesigner.OptionSelected;
@@ -167,18 +240,29 @@ namespace LogicalLayer_1.ParameterMonitor
             _isDiscreet = selectedParameter.Discreets.Any();
             if (selectedParameter.ParentTable == null)
             {
+                _table = null;
                 Index.Selected = String.Empty;
             }
             else
             {
                 _table = _parameters.First(x => x.Description == Parameter.Selected).ParentTable;
-                Index.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElement(Element.Selected).GetTable(_table.ID).GetPrimaryKeys().OrderBy(x => x)));
+                Index.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElement(Element.Selected).GetTable(_table.ID).GetDisplayKeys().OrderBy(x => x)));
                 Index.Selected = LayoutDesigner.OptionSelected;
             }
+
+            SetupLayout();
+        }
+
+        private void GetParameters(string elementName)
+        {
+            _element = _engine.FindElement(elementName);
+            var protocol = _element.Protocol;
+            _parameters = protocol.FilterParameters(ParameterFilterOptions.HideDefaultParameters);
         }
 
         private void SetupLayout()
         {
+            Clear();
             int rowNumber = 0;
 
             LayoutDesigner.SetComponentsOnRow(
@@ -196,15 +280,28 @@ namespace LogicalLayer_1.ParameterMonitor
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { _parameterId, Parameter });
 
-            LayoutDesigner.SetComponentsOnRow(
-                dialog: this,
-                row: ++rowNumber,
-                orderedWidgets: new Widget[] { _index, Index });
+            if (_table != null)
+            {
+                LayoutDesigner.SetComponentsOnRow(
+                    dialog: this,
+                    row: ++rowNumber,
+                    orderedWidgets: new Widget[] { _index, Index });
+            }
 
-            LayoutDesigner.SetComponentsOnRow(
-                dialog: this,
-                row: ++rowNumber,
-                orderedWidgets: new Widget[] { Back, Add });
+            if (_IsUpdate)
+            {
+                LayoutDesigner.SetComponentsOnRow(
+                    dialog: this,
+                    row: ++rowNumber,
+                    orderedWidgets: new Widget[] { Back, Update });
+            }
+            else
+            {
+                LayoutDesigner.SetComponentsOnRow(
+                    dialog: this,
+                    row: ++rowNumber,
+                    orderedWidgets: new Widget[] { Back, Add });
+            }
 
             LayoutDesigner.SetComponentsOnRow(
                 dialog: this,

@@ -1,6 +1,7 @@
 ﻿namespace LogicalLayer_1.ParameterMonitor
 {
     using System;
+    using System.Collections.Specialized;
     using Skyline.DataMiner.Automation;
     using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
     using Skyline.DataMiner.Net.Messages;
@@ -16,5 +17,9 @@
         public ParameterInfo Column { get; set; }
 
         public string Index { get; set; }
+
+        public string DisplayKey { get; set; }
+
+        public bool IsDiscreet { get; set; }
     }
 }
