@@ -183,7 +183,7 @@ namespace LogicalLayer_1
             var parameterMonitorView = new ParameterMonitorView(engine, data);
             parameterMonitorView.OnAddParameterPressed += ParameterMonitorView_OnAddPressed;
             parameterMonitorView.OnAddCellPressed += ParameterMonitorView_OnAddCellPressed;
-            parameterMonitorView.OnBackPressed += ParameterMonitorView_OnBackPressed;
+            parameterMonitorView.OnBackPressed += BackToChooseObject_OnBackPressed;
             parameterMonitorView.OnClosePressed += OnClosePressed;
             parameterMonitorView.OnUpdateParameterPressed += ParameterMonitorView_OnUpdateParameterPressed;
             parameterMonitorView.OnUpdateCellPressed += ParameterMonitorView_OnUpdateCellPressed;
@@ -226,7 +226,7 @@ namespace LogicalLayer_1
         {
             var staticVariableView = new StaticVariableView(engine);
             staticVariableView.OnAddPressed += StaticVariableView_OnAddPressed;
-            staticVariableView.OnBackPressed += StaticVariableView_OnBackPressed;
+            staticVariableView.OnBackPressed += BackToChooseObject_OnBackPressed;
             staticVariableView.OnClosePressed += OnClosePressed;
             return staticVariableView;
         }
@@ -340,12 +340,6 @@ namespace LogicalLayer_1
                 ParameterIsDiscreet = e.Parameter.IsDiscreet,
                 IsUpdateMessage = true,
             }));
-        }
-
-        private void ParameterMonitorView_OnBackPressed(object sender, EventArgs e)
-        {
-            ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
-            app.ShowDialog(chooseObjectView);
         }
 
         private void ElementAlarmMonitorView_OnAddPressed(object sender, ElementAlarmMonitorEventArgs e)
@@ -515,12 +509,6 @@ namespace LogicalLayer_1
             dummy.SetParameter(3, JsonConvert.SerializeObject(viewAlarmMonitorModel));
         }
 
-        private void ViewAlarmMonitorView_OnBackPressed(object sender, EventArgs e)
-        {
-            ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
-            app.ShowDialog(chooseObjectView);
-        }
-
         private void ConditionView_OnBackPressed(object sender, EventArgs e)
         {
             ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
@@ -564,12 +552,6 @@ namespace LogicalLayer_1
             }));
         }
 
-        private void StaticVariableView_OnBackPressed(object sender, EventArgs e)
-        {
-            ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
-            app.ShowDialog(chooseObjectView);
-        }
-
         private void StaticVariableView_OnAddPressed(object sender, StaticVariableEventArgs e)
         {
             var dummy = engine.GetDummy("Logical Layer");
@@ -588,6 +570,12 @@ namespace LogicalLayer_1
         private void OnClosePressed(object sender, EventArgs e)
         {
             engine.ExitSuccess("End of script.");
+        }
+
+        private void BackToChooseObject_OnBackPressed(object sender, EventArgs e)
+        {
+            ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
+            app.ShowDialog(chooseObjectView);
         }
     }
 }

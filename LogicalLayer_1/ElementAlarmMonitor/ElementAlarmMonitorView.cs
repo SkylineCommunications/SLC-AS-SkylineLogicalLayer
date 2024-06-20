@@ -25,12 +25,11 @@ namespace LogicalLayer_1.ElementAlarmMonitor
         private readonly Label _elementName = new Label("Element Name: ") { Width = 200 };
         private readonly Label _parameterName = new Label("Parameter Name: ") { Width = 200 };
         private readonly Label _index = new Label("Index: ") { Width = 200 };
-        private Protocol _protocol;
         private Element _element;
         private ParameterInfo _table;
         private List<ParameterInfo> _parameters;
         private IDms dms;
-        private bool _IsUpdate;
+        private readonly bool _IsUpdate;
 
         public ElementAlarmMonitorView(IEngine engine, string data)
             : base(engine)

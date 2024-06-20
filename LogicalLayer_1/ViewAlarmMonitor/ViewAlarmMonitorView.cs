@@ -21,9 +21,8 @@ namespace LogicalLayer_1.ViewAlarmMonitor
         private readonly Label _viewAlarmMonitorName = new Label("View Alarm Monitor Name: ") { Width = 200 };
         private readonly Label _viewName = new Label("View Name: ") { Width = 200 };
         private readonly Label _parameterName = new Label("Parameter Name: ") { Width = 200 };
-        private Protocol _protocol;
         private IDms _dms;
-        private bool _isUpdate;
+        private readonly bool _isUpdate;
 
         public ViewAlarmMonitorView(IEngine engine, string data) : base(engine)
         {

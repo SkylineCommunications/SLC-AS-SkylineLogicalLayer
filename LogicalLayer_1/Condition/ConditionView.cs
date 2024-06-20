@@ -20,9 +20,8 @@ namespace LogicalLayer_1.Condition
         private readonly Label _conditionName = new Label("Condition Name: ") { Width = 200 };
         private readonly Label _condition = new Label("Condition: ") { Width = 200 };
         private readonly Label _visualize = new Label("Visualize: ") { Width = 200 };
-        private readonly Label _automaticCorrection = new Label("Automatic Correction: ") { Width = 200 };
         private readonly Label _correctiveActionScript = new Label("Corrective Action Script: ") { Width = 200 };
-        private bool _isUpdate = false;
+        private readonly bool _isUpdate = false;
 
         public ConditionView(IEngine engine, string data) : base(engine)
         {

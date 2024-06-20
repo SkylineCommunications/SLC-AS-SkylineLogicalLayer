@@ -1,17 +1,17 @@
-﻿using LogicalLayer_1.Utils;
-using Newtonsoft.Json;
-using Skyline.DataMiner.Automation;
-using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
-using Skyline.DataMiner.Core.DataMinerSystem.Automation;
-using Skyline.DataMiner.Core.DataMinerSystem.Common;
-using Skyline.DataMiner.Net.Messages;
-using Skyline.DataMiner.Utils.InteractiveAutomationScript;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace LogicalLayer_1.ParameterMonitor
+﻿namespace LogicalLayer_1.ParameterMonitor
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using LogicalLayer_1.Utils;
+    using Newtonsoft.Json;
+    using Skyline.DataMiner.Automation;
+    using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
+    using Skyline.DataMiner.Core.DataMinerSystem.Automation;
+    using Skyline.DataMiner.Core.DataMinerSystem.Common;
+    using Skyline.DataMiner.Net.Messages;
+    using Skyline.DataMiner.Utils.InteractiveAutomationScript;
+
     public class ParameterMonitorView : Dialog
     {
         private readonly IEngine _engine;
@@ -23,9 +23,9 @@ namespace LogicalLayer_1.ParameterMonitor
         private ParameterInfo _table;
         private List<ParameterInfo> _parameters;
         private IDms dms;
-        private List<IDmsElement> _elements;
+        private readonly List<IDmsElement> _elements;
         private bool _isDiscreet;
-        private bool _IsUpdate;
+        private readonly bool _IsUpdate;
 
         public ParameterMonitorView(IEngine engine, string data)
             : base(engine)
