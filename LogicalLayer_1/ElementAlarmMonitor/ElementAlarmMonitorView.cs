@@ -163,7 +163,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 return;
             }
 
-            if (String.IsNullOrWhiteSpace(Index.Selected) || Index.Selected == LayoutDesigner.OptionSelected)
+            if (_table == null)
             {
                 OnAddPressed?.Invoke(this, new ElementAlarmMonitorEventArgs
                 {
@@ -176,17 +176,20 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             }
             else
             {
-                var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
-                var column = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected);
-                OnAddCellPressed?.Invoke(this, new ElementCellAlarmMonitorEventArgs
+                if (!String.IsNullOrWhiteSpace(Index.Selected) && Index.Selected != LayoutDesigner.OptionSelected)
                 {
-                    ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
-                    Element = _engine.FindElement(Element.Selected),
-                    ElementParameter = String.Empty,
-                    Table = column.ParentTable,
-                    Column = column,
-                    Index = primaryKey,
-                });
+                    var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
+                    var column = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected);
+                    OnAddCellPressed?.Invoke(this, new ElementCellAlarmMonitorEventArgs
+                    {
+                        ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
+                        Element = _engine.FindElement(Element.Selected),
+                        ElementParameter = String.Empty,
+                        Table = column.ParentTable,
+                        Column = column,
+                        Index = primaryKey,
+                    });
+                }
             }
         }
 
@@ -207,7 +210,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 return;
             }
 
-            if (String.IsNullOrWhiteSpace(Index.Selected) || Index.Selected == LayoutDesigner.OptionSelected)
+            if (_table == null)
             {
                 OnUpdatePressed?.Invoke(this, new ElementAlarmMonitorEventArgs
                 {
@@ -220,17 +223,20 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             }
             else
             {
-                var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
-                var column = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected);
-                OnUpdateCellPressed?.Invoke(this, new ElementCellAlarmMonitorEventArgs
+                if (!String.IsNullOrWhiteSpace(Index.Selected) && Index.Selected != LayoutDesigner.OptionSelected)
                 {
-                    ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
-                    Element = _engine.FindElement(Element.Selected),
-                    ElementParameter = String.Empty,
-                    Table = column.ParentTable,
-                    Column = column,
-                    Index = primaryKey,
-                });
+                    var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
+                    var column = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected);
+                    OnUpdateCellPressed?.Invoke(this, new ElementCellAlarmMonitorEventArgs
+                    {
+                        ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
+                        Element = _engine.FindElement(Element.Selected),
+                        ElementParameter = String.Empty,
+                        Table = column.ParentTable,
+                        Column = column,
+                        Index = primaryKey,
+                    });
+                }
             }
         }
 

@@ -162,30 +162,35 @@
                 return;
             }
 
-            if (!String.IsNullOrWhiteSpace(Index.Selected) && Index.Selected != LayoutDesigner.OptionSelected)
+            if (_table == null)
             {
-                var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
-                var parameter = _parameters.First(x => x.Description == Parameter.Selected);
-                OnAddCellPressed?.Invoke(this, new CellMonitorEventArgs
+                OnAddParameterPressed?.Invoke(this, new ParameterMonitorEventArgs
                 {
-                    CellMonitorName = ParameterMonitorName.Text,
+                    ParameterMonitorName = ParameterMonitorName.Text,
                     Element = _engine.FindElement(Element.Selected),
-                    Table = parameter.ParentTable,
-                    Column = _parameters.First(x => x.Description == Parameter.Selected),
-                    Index = primaryKey,
-                    DisplayKey = Index.Selected,
+                    Parameter = _parameters.First(x => x.Description == Parameter.Selected),
                     IsDiscreet = _isDiscreet,
                 });
-                return;
             }
-
-            OnAddParameterPressed?.Invoke(this, new ParameterMonitorEventArgs
+            else
             {
-                ParameterMonitorName = ParameterMonitorName.Text,
-                Element = _engine.FindElement(Element.Selected),
-                Parameter = _parameters.First(x => x.Description == Parameter.Selected),
-                IsDiscreet = _isDiscreet,
-            });
+                if (!String.IsNullOrWhiteSpace(Index.Selected) && Index.Selected != LayoutDesigner.OptionSelected)
+                {
+                    var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
+                    var parameter = _parameters.First(x => x.Description == Parameter.Selected);
+                    OnAddCellPressed?.Invoke(this, new CellMonitorEventArgs
+                    {
+                        CellMonitorName = ParameterMonitorName.Text,
+                        Element = _engine.FindElement(Element.Selected),
+                        Table = parameter.ParentTable,
+                        Column = _parameters.First(x => x.Description == Parameter.Selected),
+                        Index = primaryKey,
+                        DisplayKey = Index.Selected,
+                        IsDiscreet = _isDiscreet,
+                    });
+                    return;
+                }
+            }
         }
 
         private void Update_Pressed(object sender, EventArgs e)
@@ -200,30 +205,35 @@
                 return;
             }
 
-            if (!String.IsNullOrWhiteSpace(Index.Selected) && Index.Selected != LayoutDesigner.OptionSelected)
+            if (_table == null)
             {
-                var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
-                var parameter = _parameters.First(x => x.Description == Parameter.Selected);
-                OnUpdateCellPressed?.Invoke(this, new CellMonitorEventArgs
+                OnUpdateParameterPressed?.Invoke(this, new ParameterMonitorEventArgs
                 {
-                    CellMonitorName = ParameterMonitorName.Text,
+                    ParameterMonitorName = ParameterMonitorName.Text,
                     Element = _engine.FindElement(Element.Selected),
-                    Table = parameter.ParentTable,
-                    Column = _parameters.First(x => x.Description == Parameter.Selected),
-                    Index = primaryKey,
-                    DisplayKey = Index.Selected,
+                    Parameter = _parameters.First(x => x.Description == Parameter.Selected),
                     IsDiscreet = _isDiscreet,
                 });
-                return;
             }
-
-            OnUpdateParameterPressed?.Invoke(this, new ParameterMonitorEventArgs
+            else
             {
-                ParameterMonitorName = ParameterMonitorName.Text,
-                Element = _engine.FindElement(Element.Selected),
-                Parameter = _parameters.First(x => x.Description == Parameter.Selected),
-                IsDiscreet = _isDiscreet,
-            });
+                if (!String.IsNullOrWhiteSpace(Index.Selected) && Index.Selected != LayoutDesigner.OptionSelected)
+                {
+                    var primaryKey = _element.FindPrimaryKey(_table.ID, Index.Selected);
+                    var parameter = _parameters.First(x => x.Description == Parameter.Selected);
+                    OnUpdateCellPressed?.Invoke(this, new CellMonitorEventArgs
+                    {
+                        CellMonitorName = ParameterMonitorName.Text,
+                        Element = _engine.FindElement(Element.Selected),
+                        Table = parameter.ParentTable,
+                        Column = _parameters.First(x => x.Description == Parameter.Selected),
+                        Index = primaryKey,
+                        DisplayKey = Index.Selected,
+                        IsDiscreet = _isDiscreet,
+                    });
+                    return;
+                }
+            }
         }
 
         private void Element_Changed(object sender, DropDown.DropDownChangedEventArgs e)

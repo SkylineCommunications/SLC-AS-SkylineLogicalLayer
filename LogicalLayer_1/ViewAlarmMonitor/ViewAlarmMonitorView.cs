@@ -6,6 +6,7 @@ using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
 using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
 using Skyline.DataMiner.Core.DataMinerSystem.Automation;
 using Skyline.DataMiner.Core.DataMinerSystem.Common;
+using Skyline.DataMiner.Net.Messages.SLDataGateway;
 using Skyline.DataMiner.Utils.InteractiveAutomationScript;
 using System;
 using System.Collections.Generic;
@@ -69,6 +70,7 @@ namespace LogicalLayer_1.ViewAlarmMonitor
             Close.Pressed += (s, e) => OnClosePressed?.Invoke(this, EventArgs.Empty);
             if (!String.IsNullOrWhiteSpace(data) && data != "New")
             {
+                ViewAlarmMonitorName.IsEnabled = false;
                 var model = JsonConvert.DeserializeObject<ViewAlarmMonitorModel>(data);
                 ViewAlarmMonitorName.Text = model.ViewAlarmMonitorName;
                 View.Selected = model.ViewName;
@@ -130,7 +132,7 @@ namespace LogicalLayer_1.ViewAlarmMonitor
             {
                 ViewAlarmMonitorName = ViewAlarmMonitorName.Text,
                 View = _dms.GetViews().First(x => x.Name == View.Selected),
-                ViewParameter = Parameter.Selected,
+                ViewParameter = "[View Alarm State]",
             });
         }
 
@@ -155,7 +157,7 @@ namespace LogicalLayer_1.ViewAlarmMonitor
             {
                 ViewAlarmMonitorName = ViewAlarmMonitorName.Text,
                 View = _dms.GetViews().First(x => x.Name == View.Selected),
-                ViewParameter = Parameter.Selected,
+                ViewParameter = "[View Alarm State]",
             });
         }
 
@@ -189,10 +191,10 @@ namespace LogicalLayer_1.ViewAlarmMonitor
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { _viewName, View });
 
-            LayoutDesigner.SetComponentsOnRow(
+            /*LayoutDesigner.SetComponentsOnRow(
                 dialog: this,
                 row: ++rowNumber,
-                orderedWidgets: new Widget[] { _parameterName, Parameter });
+                orderedWidgets: new Widget[] { _parameterName, Parameter });*/
 
             if (_isUpdate)
             {
