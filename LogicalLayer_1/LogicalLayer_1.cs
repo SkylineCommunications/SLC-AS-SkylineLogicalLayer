@@ -72,6 +72,7 @@ namespace LogicalLayer_1
     using static System.Net.Mime.MediaTypeNames;
     using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer;
     using LogicalLayer_1.StaticVariable;
+    using Skyline.DataMiner.Net.Exceptions;
 
     /// <summary>
     /// Represents a DataMiner Automation script.
@@ -82,6 +83,7 @@ namespace LogicalLayer_1
         private InteractiveController app;
         private IEngine engine;
         private ISkylineLogicalLayer element;
+        private DateTime closingTime;
 
         /// <summary>
         /// The script entry point.
@@ -95,28 +97,13 @@ namespace LogicalLayer_1
                 app = new InteractiveController(engine);
                 this.engine = engine;
                 engine.SetFlag(RunTimeFlags.NoKeyCaching);
+                engine.Timeout = TimeSpan.FromMinutes(30);
+                closingTime = DateTime.Now + engine.Timeout;
                 RunSafe(engine);
             }
-            catch (ScriptAbortException)
+            catch (DataMinerException)
             {
-                // Catch normal abort exceptions (engine.ExitFail or engine.ExitSuccess)
-                throw; // Comment if it should be treated as a normal exit of the script.
-            }
-            catch (ScriptForceAbortException)
-            {
-                // Catch forced abort exceptions, caused via external maintenance messages.
-                throw;
-            }
-            catch (ScriptTimeoutException)
-            {
-                // Catch timeout exceptions for when a script has been running for too long.
-                throw;
-            }
-            catch (InteractiveUserDetachedException)
-            {
-                // Catch a user detaching from the interactive script by closing the window.
-                // Only applicable for interactive scripts, can be removed for non-interactive scripts.
-                throw;
+                // Do nothing
             }
             catch (Exception e)
             {
@@ -180,54 +167,59 @@ namespace LogicalLayer_1
 
         private ParameterMonitorView ConfigureParameterMonitorView(string data)
         {
-            var parameterMonitorView = new ParameterMonitorView(engine, data);
+            var parameterMonitorView = new ParameterMonitorView(engine, data, closingTime);
             parameterMonitorView.OnAddParameterPressed += ParameterMonitorView_OnAddPressed;
             parameterMonitorView.OnAddCellPressed += ParameterMonitorView_OnAddCellPressed;
             parameterMonitorView.OnBackPressed += BackToChooseObject_OnBackPressed;
             parameterMonitorView.OnClosePressed += OnClosePressed;
             parameterMonitorView.OnUpdateParameterPressed += ParameterMonitorView_OnUpdateParameterPressed;
             parameterMonitorView.OnUpdateCellPressed += ParameterMonitorView_OnUpdateCellPressed;
+            parameterMonitorView.UpdateClosingTime += UpdateClosingTime;
             return parameterMonitorView;
         }
 
         private ElementAlarmMonitorView ConfigureElementMonitorView(string data)
         {
-            var elementAlarmMonitorView = new ElementAlarmMonitorView(engine, data);
+            var elementAlarmMonitorView = new ElementAlarmMonitorView(engine, data, closingTime);
             elementAlarmMonitorView.OnAddPressed += ElementAlarmMonitorView_OnAddPressed;
             elementAlarmMonitorView.OnAddCellPressed += ElementCellAlarmMonitorView_OnAddCellPressed;
             elementAlarmMonitorView.OnBackPressed += ElementAlarmMonitorView_OnBackPressed;
             elementAlarmMonitorView.OnClosePressed += OnClosePressed;
             elementAlarmMonitorView.OnUpdatePressed += ElementAlarmMonitorView_OnUpdatePressed;
             elementAlarmMonitorView.OnUpdateCellPressed += ElementAlarmMonitorView_OnUpdateCellPressed;
+            elementAlarmMonitorView.UpdateClosingTime += UpdateClosingTime;
             return elementAlarmMonitorView;
         }
 
         private ViewAlarmMonitorView ConfigureViewMonitorView(string data)
         {
-            var viewAlarmMonitorView = new ViewAlarmMonitorView(engine, data);
+            var viewAlarmMonitorView = new ViewAlarmMonitorView(engine, data, closingTime);
             viewAlarmMonitorView.OnAddPressed += ViewAlarmMonitorView_OnAddPressed;
             viewAlarmMonitorView.OnBackPressed += ElementAlarmMonitorView_OnBackPressed;
             viewAlarmMonitorView.OnClosePressed += OnClosePressed;
             viewAlarmMonitorView.OnUpdatePressed += ViewAlarmMonitorView_OnUpdatePressed;
+            viewAlarmMonitorView.UpdateClosingTime += UpdateClosingTime;
             return viewAlarmMonitorView;
         }
 
         private ConditionView ConfigureConditionView(string data)
         {
-            var conditionView = new ConditionView(engine, data);
+            var conditionView = new ConditionView(engine, data, closingTime);
             conditionView.OnAddConditionPressed += ConditionView_OnAddConditionPressed;
             conditionView.OnBackPressed += ConditionView_OnBackPressed;
             conditionView.OnClosePressed += OnClosePressed;
             conditionView.OnUpdateConditionPressed += ConditionView_OnUpdateConditionPressed;
+            conditionView.UpdateClosingTime += UpdateClosingTime;
             return conditionView;
         }
 
         private StaticVariableView ConfigureStaticVariableView()
         {
-            var staticVariableView = new StaticVariableView(engine);
+            var staticVariableView = new StaticVariableView(engine, closingTime);
             staticVariableView.OnAddPressed += StaticVariableView_OnAddPressed;
             staticVariableView.OnBackPressed += BackToChooseObject_OnBackPressed;
             staticVariableView.OnClosePressed += OnClosePressed;
+            staticVariableView.UpdateClosingTime += UpdateClosingTime;
             return staticVariableView;
         }
 
@@ -576,6 +568,11 @@ namespace LogicalLayer_1
         {
             ChooseObjectView chooseObjectView = ConfigureChooseObjectView();
             app.ShowDialog(chooseObjectView);
+        }
+
+        private void UpdateClosingTime(object sender, EventArgs e)
+        {
+            closingTime = DateTime.Now;
         }
     }
 }

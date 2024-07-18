@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Timers;
     using LogicalLayer_1.Utils;
     using Newtonsoft.Json;
     using Skyline.DataMiner.Automation;
@@ -14,11 +15,13 @@
 
     public class ParameterMonitorView : Dialog
     {
-        private readonly IEngine _engine;
         private readonly Label _parameterMonitorName = new Label("Parameter Monitor Name: ") { Width = 200 };
         private readonly Label _elementName = new Label("Element Name: ") { Width = 200 };
         private readonly Label _parameterId = new Label("Parameter Name: ") { Width = 200 };
         private readonly Label _index = new Label("Index: ") { Width = 200 };
+        private string _startTimeoutLabel = "Window will close in ";
+        private Label _timeout = new Label() { Width = 200 };
+        private DateTime _closingTime;
         private Element _element;
         private ParameterInfo _table;
         private List<ParameterInfo> _parameters;
@@ -26,11 +29,16 @@
         private readonly List<IDmsElement> _elements;
         private bool _isDiscreet;
         private readonly bool _IsUpdate;
+        private Timer _timer;
 
-        public ParameterMonitorView(IEngine engine, string data)
+        public ParameterMonitorView(IEngine engine, string data, DateTime closingTime)
             : base(engine)
         {
-            _engine = engine;
+            _closingTime = closingTime;
+            _timer = new Timer(20000);
+            _timer.Elapsed += Timer_Elapsed;
+            _timer.Start();
+            _timeout.Text = _startTimeoutLabel + closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
             dms = engine.GetDms();
             Title = "Parameter Monitor";
             ParameterMonitorName = new TextBox
@@ -69,6 +77,11 @@
             {
                 Width = 200,
             };
+            ParameterMonitorName.Changed += KeepAlive;
+            ParameterMonitorName.FocusLost += KeepAlive;
+            Element.Changed += KeepAlive;
+            Parameter.Changed += KeepAlive;
+            Index.Changed += KeepAlive;
             Add.Pressed += (s, e) => OnAdd(s, e);
             Back.Pressed += Back_Pressed;
             Update.Pressed += Update_Pressed;
@@ -124,6 +137,8 @@
 
         public event EventHandler OnClosePressed;
 
+        public event EventHandler UpdateClosingTime;
+
         public TextBox ParameterMonitorName { get; set; }
 
         public DropDown Element { get; set; }
@@ -140,13 +155,33 @@
 
         public Button Update { get; set; }
 
+        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            SetupLayout();
+        }
+
+        private void KeepAlive(object sender, EventArgs e)
+        {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            _closingTime = DateTime.Now + Engine.Timeout;
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            SetupLayout();
+        }
+
         private void Back_Pressed(object sender, EventArgs e)
         {
+            _timer.Stop();
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             OnBackPressed?.Invoke(sender, e);
         }
 
         private void OnAdd(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             if (String.IsNullOrWhiteSpace(ParameterMonitorName.Text))
             {
                 return;
@@ -167,7 +202,7 @@
                 OnAddParameterPressed?.Invoke(this, new ParameterMonitorEventArgs
                 {
                     ParameterMonitorName = ParameterMonitorName.Text,
-                    Element = _engine.FindElement(Element.Selected),
+                    Element = Engine.FindElement(Element.Selected),
                     Parameter = _parameters.First(x => x.Description == Parameter.Selected),
                     IsDiscreet = _isDiscreet,
                 });
@@ -181,7 +216,7 @@
                     OnAddCellPressed?.Invoke(this, new CellMonitorEventArgs
                     {
                         CellMonitorName = ParameterMonitorName.Text,
-                        Element = _engine.FindElement(Element.Selected),
+                        Element = Engine.FindElement(Element.Selected),
                         Table = parameter.ParentTable,
                         Column = _parameters.First(x => x.Description == Parameter.Selected),
                         Index = primaryKey,
@@ -195,6 +230,8 @@
 
         private void Update_Pressed(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             if (Element.Selected == LayoutDesigner.OptionSelected)
             {
                 return;
@@ -210,7 +247,7 @@
                 OnUpdateParameterPressed?.Invoke(this, new ParameterMonitorEventArgs
                 {
                     ParameterMonitorName = ParameterMonitorName.Text,
-                    Element = _engine.FindElement(Element.Selected),
+                    Element = Engine.FindElement(Element.Selected),
                     Parameter = _parameters.First(x => x.Description == Parameter.Selected),
                     IsDiscreet = _isDiscreet,
                 });
@@ -224,7 +261,7 @@
                     OnUpdateCellPressed?.Invoke(this, new CellMonitorEventArgs
                     {
                         CellMonitorName = ParameterMonitorName.Text,
-                        Element = _engine.FindElement(Element.Selected),
+                        Element = Engine.FindElement(Element.Selected),
                         Table = parameter.ParentTable,
                         Column = _parameters.First(x => x.Description == Parameter.Selected),
                         Index = primaryKey,
@@ -265,7 +302,7 @@
 
         private void GetParameters(string elementName)
         {
-            _element = _engine.FindElement(elementName);
+            _element = Engine.FindElement(elementName);
             var protocol = _element.Protocol;
             _parameters = protocol.FilterParameters(ParameterFilterOptions.HideDefaultParameters);
         }
@@ -317,6 +354,18 @@
                 dialog: this,
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { Close });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+                row: ++rowNumber,
+                orderedWidgets: new Widget[] { new WhiteSpace() });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+                row: ++rowNumber,
+                orderedWidgets: new Widget[] { _timeout });
+
+            Show(false);
         }
     }
 }

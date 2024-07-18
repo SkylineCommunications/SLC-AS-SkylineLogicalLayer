@@ -2,7 +2,6 @@
 {
     using System;
     using Skyline.DataMiner.Automation;
-    using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
     using Skyline.DataMiner.Net.Messages;
 
     public class ParameterMonitorEventArgs : EventArgs

@@ -2,8 +2,6 @@
 using LogicalLayer_1.Utils;
 using Newtonsoft.Json;
 using Skyline.DataMiner.Automation;
-using Skyline.DataMiner.CICD.Parsers.Common.Xml;
-using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
 using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
 using Skyline.DataMiner.Core.DataMinerSystem.Automation;
 using Skyline.DataMiner.Core.DataMinerSystem.Common;
@@ -15,26 +13,34 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace LogicalLayer_1.ElementAlarmMonitor
 {
     public class ElementAlarmMonitorView : Dialog
     {
-        private readonly IEngine _engine;
         private readonly Label _elementAlarmMonitorName = new Label("Element Alarm Monitor Name: ") { Width = 200 };
         private readonly Label _elementName = new Label("Element Name: ") { Width = 200 };
         private readonly Label _parameterName = new Label("Parameter Name: ") { Width = 200 };
         private readonly Label _index = new Label("Index: ") { Width = 200 };
+        private string _startTimeoutLabel = "Window will close in ";
+        private Label _timeout = new Label() { Width = 200 };
+        private DateTime _closingTime;
         private Element _element;
         private ParameterInfo _table;
         private List<ParameterInfo> _parameters;
         private IDms dms;
         private readonly bool _IsUpdate;
+        private Timer _timer;
 
-        public ElementAlarmMonitorView(IEngine engine, string data)
+        public ElementAlarmMonitorView(IEngine engine, string data, DateTime closingTime)
             : base(engine)
         {
-            _engine = engine;
+            _closingTime = closingTime;
+            _timer = new Timer(20000);
+            _timer.Elapsed += Timer_Elapsed;
+            _timer.Start();
+            _timeout.Text = _startTimeoutLabel + closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
             dms = engine.GetDms();
             Title = "Element Alarm Monitor";
             ElementAlarmMonitorName = new TextBox
@@ -73,6 +79,10 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             {
                 Width = 200,
             };
+            ElementAlarmMonitorName.Changed += KeepAlive;
+            Element.Changed += KeepAlive;
+            Parameter.Changed += KeepAlive;
+            Index.Changed += KeepAlive;
             Add.Pressed += (s, e) => OnAdd(s, e);
             Back.Pressed += Back_Pressed;
             Update.Pressed += Update_Pressed;
@@ -125,6 +135,8 @@ namespace LogicalLayer_1.ElementAlarmMonitor
 
         public event EventHandler OnClosePressed;
 
+        public event EventHandler UpdateClosingTime;
+
         public TextBox ElementAlarmMonitorName { get; set; }
 
         public DropDown Element { get; set; }
@@ -141,13 +153,33 @@ namespace LogicalLayer_1.ElementAlarmMonitor
 
         public Button Update { get; set; }
 
+        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            SetupLayout();
+        }
+
+        private void KeepAlive(object sender, EventArgs e)
+        {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            _closingTime = DateTime.Now + Engine.Timeout;
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            SetupLayout();
+        }
+
         private void Back_Pressed(object sender, EventArgs e)
         {
+            _timer.Stop();
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             OnBackPressed?.Invoke(sender, e);
         }
 
         private void OnAdd(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             if (String.IsNullOrWhiteSpace(ElementAlarmMonitorName.Text))
             {
                 return;
@@ -168,7 +200,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 OnAddPressed?.Invoke(this, new ElementAlarmMonitorEventArgs
                 {
                     ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
-                    Element = _engine.FindElement(Element.Selected),
+                    Element = Engine.FindElement(Element.Selected),
                     ElementParameter = Parameter.Selected.StartsWith("[") ? Parameter.Selected : String.Empty,
                     Parameter = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected),
                     Index = Index.Selected,
@@ -183,7 +215,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                     OnAddCellPressed?.Invoke(this, new ElementCellAlarmMonitorEventArgs
                     {
                         ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
-                        Element = _engine.FindElement(Element.Selected),
+                        Element = Engine.FindElement(Element.Selected),
                         ElementParameter = String.Empty,
                         Table = column.ParentTable,
                         Column = column,
@@ -195,6 +227,8 @@ namespace LogicalLayer_1.ElementAlarmMonitor
 
         private void Update_Pressed(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             if (String.IsNullOrWhiteSpace(ElementAlarmMonitorName.Text))
             {
                 return;
@@ -215,7 +249,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 OnUpdatePressed?.Invoke(this, new ElementAlarmMonitorEventArgs
                 {
                     ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
-                    Element = _engine.FindElement(Element.Selected),
+                    Element = Engine.FindElement(Element.Selected),
                     ElementParameter = Parameter.Selected.StartsWith("[") ? Parameter.Selected : String.Empty,
                     Parameter = _parameters.FirstOrDefault(x => x.Description == Parameter.Selected),
                     Index = Index.Selected,
@@ -230,7 +264,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                     OnUpdateCellPressed?.Invoke(this, new ElementCellAlarmMonitorEventArgs
                     {
                         ElementAlarmMonitorName = ElementAlarmMonitorName.Text,
-                        Element = _engine.FindElement(Element.Selected),
+                        Element = Engine.FindElement(Element.Selected),
                         ElementParameter = String.Empty,
                         Table = column.ParentTable,
                         Column = column,
@@ -295,7 +329,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
 
         private void GetParameters(string elementName)
         {
-            _element = _engine.FindElement(elementName);
+            _element = Engine.FindElement(elementName);
             var protocol = _element.Protocol;
             _parameters = protocol.FilterParameters(ParameterFilterOptions.MonitoredOnly);
         }
@@ -347,6 +381,18 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                 dialog: this,
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { Close });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+                row: ++rowNumber,
+                orderedWidgets: new Widget[] { new WhiteSpace() });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+                row: ++rowNumber,
+                orderedWidgets: new Widget[] { _timeout });
+
+            Show(false);
         }
     }
 }

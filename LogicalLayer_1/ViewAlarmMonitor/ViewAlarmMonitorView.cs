@@ -2,7 +2,6 @@
 using LogicalLayer_1.Utils;
 using Newtonsoft.Json;
 using Skyline.DataMiner.Automation;
-using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
 using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
 using Skyline.DataMiner.Core.DataMinerSystem.Automation;
 using Skyline.DataMiner.Core.DataMinerSystem.Common;
@@ -12,22 +11,28 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-
+using System.Timers;
 namespace LogicalLayer_1.ViewAlarmMonitor
 {
     public class ViewAlarmMonitorView : Dialog
     {
-        private readonly IEngine _engine;
         private readonly Label _viewAlarmMonitorName = new Label("View Alarm Monitor Name: ") { Width = 200 };
         private readonly Label _viewName = new Label("View Name: ") { Width = 200 };
         private readonly Label _parameterName = new Label("Parameter Name: ") { Width = 200 };
         private IDms _dms;
         private readonly bool _isUpdate;
+        private string _startTimeoutLabel = "Window will close in ";
+        private Label _timeout = new Label() { Width = 200 };
+        private DateTime _closingTime;
+        private Timer _timer;
 
-        public ViewAlarmMonitorView(IEngine engine, string data) : base(engine)
+        public ViewAlarmMonitorView(IEngine engine, string data, DateTime closingTime) : base(engine)
         {
-            _engine = engine;
+            _closingTime = closingTime;
+            _timer = new Timer(20000);
+            _timer.Elapsed += Timer_Elapsed;
+            _timer.Start();
+            _timeout.Text = _startTimeoutLabel + closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
             _dms = engine.GetDms();
             Title = "View Alarm Monitor";
             ViewAlarmMonitorName = new TextBox
@@ -61,6 +66,9 @@ namespace LogicalLayer_1.ViewAlarmMonitor
             {
                 Width = 200,
             };
+            ViewAlarmMonitorName.Changed += KeepAlive;
+            View.Changed += KeepAlive;
+            Parameter.Changed += KeepAlive;
             Add.Pressed += (s, e) => OnAdd(s, e);
             Back.Pressed += Back_Pressed;
             Update.Pressed += Update_Pressed;
@@ -90,6 +98,8 @@ namespace LogicalLayer_1.ViewAlarmMonitor
 
         public event EventHandler OnClosePressed;
 
+        public event EventHandler UpdateClosingTime;
+
         public TextBox ViewAlarmMonitorName { get; set; }
 
         public DropDown View { get; set; }
@@ -106,13 +116,33 @@ namespace LogicalLayer_1.ViewAlarmMonitor
 
         public Button Update { get; set; }
 
+        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            SetupLayout();
+        }
+
+        private void KeepAlive(object sender, EventArgs e)
+        {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            _closingTime = DateTime.Now + Engine.Timeout;
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            SetupLayout();
+        }
+
         private void Back_Pressed(object sender, EventArgs e)
         {
+            _timer.Stop();
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             OnBackPressed?.Invoke(sender, e);
         }
 
         private void OnAdd(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             if (String.IsNullOrWhiteSpace(ViewAlarmMonitorName.Text))
             {
                 return;
@@ -138,6 +168,8 @@ namespace LogicalLayer_1.ViewAlarmMonitor
 
         private void Update_Pressed(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             if (String.IsNullOrWhiteSpace(ViewAlarmMonitorName.Text))
             {
                 return;
@@ -179,6 +211,7 @@ namespace LogicalLayer_1.ViewAlarmMonitor
 
         private void SetupLayout()
         {
+            Clear();
             int rowNumber = 0;
 
             LayoutDesigner.SetComponentsOnRow(
@@ -215,6 +248,18 @@ namespace LogicalLayer_1.ViewAlarmMonitor
                 dialog: this,
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { Close });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+                row: ++rowNumber,
+                orderedWidgets: new Widget[] { new WhiteSpace() });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+            row: ++rowNumber,
+                orderedWidgets: new Widget[] { _timeout });
+
+            Show(false);
         }
     }
 }

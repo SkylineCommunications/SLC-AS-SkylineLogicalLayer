@@ -2,30 +2,34 @@
 using LogicalLayer_1.Utils;
 using Newtonsoft.Json;
 using Skyline.DataMiner.Automation;
-using Skyline.DataMiner.CICD.Parsers.Protocol.Xml;
 using Skyline.DataMiner.ConnectorAPI.SkylineCommunications.SkylineLogicalLayer.InterAppMessages.MyMessages;
 using Skyline.DataMiner.Net.Messages.SLDataGateway;
 using Skyline.DataMiner.Utils.InteractiveAutomationScript;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Timers;
 
 namespace LogicalLayer_1.Condition
 {
     public class ConditionView : Dialog
     {
-        private readonly IEngine _engine;
+        private string _startTimeoutLabel = "Window will close in ";
         private readonly Label _conditionName = new Label("Condition Name: ") { Width = 200 };
         private readonly Label _condition = new Label("Condition: ") { Width = 200 };
         private readonly Label _visualize = new Label("Visualize: ") { Width = 200 };
         private readonly Label _correctiveActionScript = new Label("Corrective Action Script: ") { Width = 200 };
         private readonly bool _isUpdate = false;
+        private Label _timeout = new Label() { Width = 200 };
+        private DateTime _closingTime;
+        private Timer _timer;
 
-        public ConditionView(IEngine engine, string data) : base(engine)
+        public ConditionView(IEngine engine, string data, DateTime closingTime) : base(engine)
         {
-            _engine = engine;
+            _closingTime = closingTime;
+            _timer = new Timer(20000);
+            _timer.Elapsed += Timer_Elapsed;
+            _timer.Start();
+            _timeout.Text = _startTimeoutLabel + closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
             Title = "Condition";
             ConditionName = new TextBox
             {
@@ -72,6 +76,13 @@ namespace LogicalLayer_1.Condition
             {
                 Width = 200,
             };
+            ConditionName.Changed += KeepAlive;
+            ConditionName.FocusLost += KeepAlive;
+            Condition.Changed += KeepAlive;
+            Condition.FocusLost += KeepAlive;
+            Visualize.Changed += KeepAlive;
+            AutomaticCorrection.Changed += KeepAlive;
+            CorrectiveActionScript.Changed += KeepAlive;
             Add.Pressed += Add_Pressed;
             Back.Pressed += Back_Pressed;
             Close.Pressed += (s, e) => OnClosePressed?.Invoke(this, EventArgs.Empty);
@@ -99,6 +110,8 @@ namespace LogicalLayer_1.Condition
 
         public event EventHandler OnClosePressed;
 
+        public event EventHandler UpdateClosingTime;
+
         public TextBox ConditionName { get; set; }
 
         public TextBox Condition { get; set; }
@@ -117,13 +130,34 @@ namespace LogicalLayer_1.Condition
 
         public Button Update { get; set; }
 
+        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            Engine.GenerateInformation("Test: " + _timeout.Text);
+            SetupLayout();
+        }
+
+        private void KeepAlive(object sender, EventArgs e)
+        {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            _closingTime = DateTime.Now + Engine.Timeout;
+            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            SetupLayout();
+        }
+
         private void Back_Pressed(object sender, EventArgs e)
         {
+            _timer.Stop();
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             OnBackPressed?.Invoke(sender, e);
         }
 
         private void Add_Pressed(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             OnAddConditionPressed?.Invoke(sender, new ConditionEventArgs
             {
                 ConditionName = ConditionName.Text,
@@ -136,6 +170,8 @@ namespace LogicalLayer_1.Condition
 
         private void Update_Pressed(object sender, EventArgs e)
         {
+            Engine.KeepAlive();
+            UpdateClosingTime.Invoke(this, EventArgs.Empty);
             OnUpdateConditionPressed?.Invoke(sender, new ConditionEventArgs
             {
                 ConditionName = ConditionName.Text,
@@ -148,6 +184,7 @@ namespace LogicalLayer_1.Condition
 
         private void SetupLayout()
         {
+            Clear();
             int rowNumber = 0;
 
             LayoutDesigner.SetComponentsOnRow(
@@ -189,6 +226,18 @@ namespace LogicalLayer_1.Condition
                 dialog: this,
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { Close });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+                row: ++rowNumber,
+                orderedWidgets: new Widget[] { new WhiteSpace() });
+
+            LayoutDesigner.SetComponentsOnRow(
+                dialog: this,
+            row: ++rowNumber,
+                orderedWidgets: new Widget[] { _timeout });
+
+            Show(false);
         }
     }
 }
