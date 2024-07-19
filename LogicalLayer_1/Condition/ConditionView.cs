@@ -133,7 +133,6 @@ namespace LogicalLayer_1.Condition
         private void Timer_Elapsed(object sender, ElapsedEventArgs e)
         {
             _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
-            Engine.GenerateInformation("Test: " + _timeout.Text);
             SetupLayout();
         }
 

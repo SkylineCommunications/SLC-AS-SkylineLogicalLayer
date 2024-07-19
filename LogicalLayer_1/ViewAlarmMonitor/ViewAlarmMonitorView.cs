@@ -224,11 +224,6 @@ namespace LogicalLayer_1.ViewAlarmMonitor
                 row: ++rowNumber,
                 orderedWidgets: new Widget[] { _viewName, View });
 
-            /*LayoutDesigner.SetComponentsOnRow(
-                dialog: this,
-                row: ++rowNumber,
-                orderedWidgets: new Widget[] { _parameterName, Parameter });*/
-
             if (_isUpdate)
             {
                 LayoutDesigner.SetComponentsOnRow(

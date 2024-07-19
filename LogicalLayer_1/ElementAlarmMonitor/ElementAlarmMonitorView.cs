@@ -319,7 +319,6 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             else
             {
                 _table = _parameters.First(x => x.Description == Parameter.Selected).ParentTable;
-                //Index.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElement(Element.Selected).GetTable(selectedParameterTable.ID).GetPrimaryKeys().OrderBy(x => x)));
                 Index.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(_element.GetTableDisplayKeys(_table.Name).OrderBy(x => x)));
                 Index.Selected = LayoutDesigner.OptionSelected;
             }
