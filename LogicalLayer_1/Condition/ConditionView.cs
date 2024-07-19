@@ -13,15 +13,15 @@ namespace LogicalLayer_1.Condition
 {
     public class ConditionView : Dialog
     {
-        private string _startTimeoutLabel = "Window will close in ";
+        private readonly string _startTimeoutLabel = "Window will close in ";
         private readonly Label _conditionName = new Label("Condition Name: ") { Width = 200 };
         private readonly Label _condition = new Label("Condition: ") { Width = 200 };
         private readonly Label _visualize = new Label("Visualize: ") { Width = 200 };
         private readonly Label _correctiveActionScript = new Label("Corrective Action Script: ") { Width = 200 };
         private readonly bool _isUpdate = false;
-        private Label _timeout = new Label() { Width = 200 };
+        private readonly Label _timeout = new Label() { Width = 200 };
+        private readonly Timer _timer;
         private DateTime _closingTime;
-        private Timer _timer;
 
         public ConditionView(IEngine engine, string data, DateTime closingTime) : base(engine)
         {

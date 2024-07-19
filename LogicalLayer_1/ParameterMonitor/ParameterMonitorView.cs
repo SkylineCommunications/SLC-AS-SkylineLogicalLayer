@@ -19,8 +19,10 @@
         private readonly Label _elementName = new Label("Element Name: ") { Width = 200 };
         private readonly Label _parameterId = new Label("Parameter Name: ") { Width = 200 };
         private readonly Label _index = new Label("Index: ") { Width = 200 };
-        private string _startTimeoutLabel = "Window will close in ";
-        private Label _timeout = new Label() { Width = 200 };
+        private readonly string _startTimeoutLabel = "Window will close in ";
+        private readonly Label _timeout = new Label() { Width = 200 };
+        private readonly bool _isUpdate;
+        private readonly Timer _timer;
         private DateTime _closingTime;
         private Element _element;
         private ParameterInfo _table;
@@ -28,8 +30,6 @@
         private IDms dms;
         private readonly List<IDmsElement> _elements;
         private bool _isDiscreet;
-        private readonly bool _IsUpdate;
-        private Timer _timer;
 
         public ParameterMonitorView(IEngine engine, string data, DateTime closingTime)
             : base(engine)
@@ -94,7 +94,7 @@
             if (!String.IsNullOrWhiteSpace(data) && data != "New")
             {
                 ParameterMonitorName.IsEnabled = false;
-                _IsUpdate = true;
+                _isUpdate = true;
                 if (data.Contains("ParameterMonitorModel"))
                 {
                     ParameterMonitorModel model = JsonConvert.DeserializeObject<ParameterMonitorModel>(data);
@@ -335,7 +335,7 @@
                     orderedWidgets: new Widget[] { _index, Index });
             }
 
-            if (_IsUpdate)
+            if (_isUpdate)
             {
                 LayoutDesigner.SetComponentsOnRow(
                     dialog: this,

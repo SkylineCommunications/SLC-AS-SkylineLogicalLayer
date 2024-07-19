@@ -14,10 +14,10 @@ namespace LogicalLayer_1.StaticVariable
     {
         private readonly Label _staticVariableName = new Label("Static Variable Name: ") { Width = 200 };
         private readonly Label _staticVariableValue = new Label("Value: ") { Width = 200 };
-        private string _startTimeoutLabel = "Window will close in ";
-        private Label _timeout = new Label() { Width = 200 };
+        private readonly string _startTimeoutLabel = "Window will close in ";
+        private readonly Label _timeout = new Label() { Width = 200 };
+        private readonly Timer _timer;
         private DateTime _closingTime;
-        private Timer _timer;
 
         public StaticVariableView(IEngine engine, DateTime closingTime) : base(engine)
         {

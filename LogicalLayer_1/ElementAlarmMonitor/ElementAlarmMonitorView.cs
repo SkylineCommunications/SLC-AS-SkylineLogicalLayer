@@ -23,15 +23,15 @@ namespace LogicalLayer_1.ElementAlarmMonitor
         private readonly Label _elementName = new Label("Element Name: ") { Width = 200 };
         private readonly Label _parameterName = new Label("Parameter Name: ") { Width = 200 };
         private readonly Label _index = new Label("Index: ") { Width = 200 };
-        private string _startTimeoutLabel = "Window will close in ";
-        private Label _timeout = new Label() { Width = 200 };
+        private readonly string _startTimeoutLabel = "Window will close in ";
+        private readonly Label _timeout = new Label() { Width = 200 };
+        private readonly bool _isUpdate;
+        private readonly Timer _timer;
         private DateTime _closingTime;
         private Element _element;
         private ParameterInfo _table;
         private List<ParameterInfo> _parameters;
         private IDms dms;
-        private readonly bool _IsUpdate;
-        private Timer _timer;
 
         public ElementAlarmMonitorView(IEngine engine, string data, DateTime closingTime)
             : base(engine)
@@ -93,7 +93,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             Close.Pressed += (s, e) => OnClosePressed?.Invoke(this, EventArgs.Empty);
             if (!String.IsNullOrWhiteSpace(data) && data != "New")
             {
-                _IsUpdate = true;
+                _isUpdate = true;
                 ElementAlarmMonitorName.IsEnabled = false;
                 if (data.Contains("ElementAlarmMonitorModel"))
                 {
@@ -361,7 +361,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
                     orderedWidgets: new Widget[] { _index, Index });
             }
 
-            if (_IsUpdate)
+            if (_isUpdate)
             {
                 LayoutDesigner.SetComponentsOnRow(
                     dialog: this,

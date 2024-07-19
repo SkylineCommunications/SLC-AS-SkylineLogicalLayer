@@ -19,12 +19,12 @@ namespace LogicalLayer_1.ViewAlarmMonitor
         private readonly Label _viewAlarmMonitorName = new Label("View Alarm Monitor Name: ") { Width = 200 };
         private readonly Label _viewName = new Label("View Name: ") { Width = 200 };
         private readonly Label _parameterName = new Label("Parameter Name: ") { Width = 200 };
-        private IDms _dms;
         private readonly bool _isUpdate;
-        private string _startTimeoutLabel = "Window will close in ";
-        private Label _timeout = new Label() { Width = 200 };
+        private readonly string _startTimeoutLabel = "Window will close in ";
+        private readonly Label _timeout = new Label() { Width = 200 };
+        private readonly Timer _timer;
+        private IDms _dms;
         private DateTime _closingTime;
-        private Timer _timer;
 
         public ViewAlarmMonitorView(IEngine engine, string data, DateTime closingTime) : base(engine)
         {
