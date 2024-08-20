@@ -266,6 +266,7 @@ namespace LogicalLayer_1
                 ColumnId = e.Column.ID,
                 ColumnIsDiscreet = e.Column.IsDiscreet,
                 Index = e.Index,
+                DisplayKey = e.DisplayKey,
             }));
         }
 

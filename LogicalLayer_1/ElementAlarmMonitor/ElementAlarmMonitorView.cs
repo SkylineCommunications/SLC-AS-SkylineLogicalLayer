@@ -24,9 +24,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
         private readonly Label _parameterName = new Label("Parameter Name: ") { Width = 200 };
         private readonly Label _index = new Label("Index: ") { Width = 200 };
         private readonly string _startTimeoutLabel = "Window will close in ";
-        private readonly Label _timeout = new Label() { Width = 200 };
         private readonly bool _isUpdate;
-        private readonly Timer _timer;
         private DateTime _closingTime;
         private Element _element;
         private ParameterInfo _table;
@@ -37,12 +35,8 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             : base(engine)
         {
             _closingTime = closingTime;
-            _timer = new Timer(20000);
-            _timer.Elapsed += Timer_Elapsed;
-            _timer.Start();
-            _timeout.Text = _startTimeoutLabel + closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            Title = $"Element Alarm Monitor - Will close at {_closingTime.TimeOfDay.Hours.ToString().PadLeft(2, '0')}:{_closingTime.TimeOfDay.Minutes.ToString().PadLeft(2, '0')}";
             dms = engine.GetDms();
-            Title = "Element Alarm Monitor";
             ElementAlarmMonitorName = new TextBox
             {
                 Width = 200,
@@ -79,13 +73,14 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             {
                 Width = 200,
             };
-            ElementAlarmMonitorName.Changed += KeepAlive;
-            Element.Changed += KeepAlive;
-            Parameter.Changed += KeepAlive;
-            Index.Changed += KeepAlive;
+            KeepAlive = new Button("Keep Alive")
+            {
+                Width = 200,
+            };
             Add.Pressed += (s, e) => OnAdd(s, e);
             Back.Pressed += Back_Pressed;
             Update.Pressed += Update_Pressed;
+            KeepAlive.Pressed += KeepAliveScript;
             Element.SetOptions(LayoutDesigner.GetDropdownValuesWithSelect(dms.GetElements().Select(x => x.Name).OrderBy(x => x)));
             Element.Selected = LayoutDesigner.OptionSelected;
             Element.Changed += Element_Changed;
@@ -153,33 +148,26 @@ namespace LogicalLayer_1.ElementAlarmMonitor
 
         public Button Update { get; set; }
 
-        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
-            SetupLayout();
-        }
+        public Button KeepAlive { get; set; }
 
-        private void KeepAlive(object sender, EventArgs e)
+        private void KeepAliveScript(object sender, EventArgs e)
         {
             Engine.KeepAlive();
             UpdateClosingTime.Invoke(this, EventArgs.Empty);
             _closingTime = DateTime.Now + Engine.Timeout;
-            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            Title = $"Element Alarm Monitor - Will close at {_closingTime.TimeOfDay.Hours.ToString().PadLeft(2, '0')}:{_closingTime.TimeOfDay.Minutes.ToString().PadLeft(2, '0')}";
             SetupLayout();
         }
 
         private void Back_Pressed(object sender, EventArgs e)
         {
-            _timer.Stop();
-            Engine.KeepAlive();
-            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            KeepAliveScript(sender, e);
             OnBackPressed?.Invoke(sender, e);
         }
 
         private void OnAdd(object sender, EventArgs e)
         {
-            Engine.KeepAlive();
-            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            KeepAliveScript(sender, e);
             if (String.IsNullOrWhiteSpace(ElementAlarmMonitorName.Text))
             {
                 return;
@@ -227,8 +215,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
 
         private void Update_Pressed(object sender, EventArgs e)
         {
-            Engine.KeepAlive();
-            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            KeepAliveScript(sender, e);
             if (String.IsNullOrWhiteSpace(ElementAlarmMonitorName.Text))
             {
                 return;
@@ -278,7 +265,6 @@ namespace LogicalLayer_1.ElementAlarmMonitor
         {
             GetParameters(e.Selected);
             var options = FillOptions();
-
             Parameter.SetOptions(options.OrderBy(x => x));
             Parameter.Selected = LayoutDesigner.OptionSelected;
         }
@@ -389,9 +375,7 @@ namespace LogicalLayer_1.ElementAlarmMonitor
             LayoutDesigner.SetComponentsOnRow(
                 dialog: this,
                 row: ++rowNumber,
-                orderedWidgets: new Widget[] { _timeout });
-
-            Show(false);
+                orderedWidgets: new Widget[] { KeepAlive });
         }
     }
 }

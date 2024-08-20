@@ -14,19 +14,12 @@ namespace LogicalLayer_1.StaticVariable
     {
         private readonly Label _staticVariableName = new Label("Static Variable Name: ") { Width = 200 };
         private readonly Label _staticVariableValue = new Label("Value: ") { Width = 200 };
-        private readonly string _startTimeoutLabel = "Window will close in ";
-        private readonly Label _timeout = new Label() { Width = 200 };
-        private readonly Timer _timer;
         private DateTime _closingTime;
 
         public StaticVariableView(IEngine engine, DateTime closingTime) : base(engine)
         {
             _closingTime = closingTime;
-            _timer = new Timer(20000);
-            _timer.Elapsed += Timer_Elapsed;
-            _timer.Start();
-            _timeout.Text = _startTimeoutLabel + closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
-            Title = "Static Variable";
+            Title = $"Static Variable - Will close at {_closingTime.TimeOfDay.Hours.ToString().PadLeft(2, '0')}:{_closingTime.TimeOfDay.Minutes.ToString().PadLeft(2, '0')}";
             StaticVariableName = new TextBox
             {
                 Width = 200,
@@ -47,9 +40,12 @@ namespace LogicalLayer_1.StaticVariable
             {
                 Width = 200,
             };
-            StaticVariableName.Changed += KeepAlive;
-            StaticVariableValue.Changed += KeepAlive;
+            KeepAlive = new Button("Keep Alive")
+            {
+                Width = 200,
+            };
             Add.Pressed += Add_Pressed;
+            KeepAlive.Pressed += KeepAliveScript;
             Back.Pressed += (s, e) => OnBackPressed?.Invoke(this, EventArgs.Empty);
             Close.Pressed += (s, e) => OnClosePressed?.Invoke(this, EventArgs.Empty);
             SetupLayout();
@@ -75,25 +71,20 @@ namespace LogicalLayer_1.StaticVariable
 
         public Button Close { get; set; }
 
-        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
-            SetupLayout();
-        }
+        public Button KeepAlive { get; set; }
 
-        private void KeepAlive(object sender, EventArgs e)
+        private void KeepAliveScript(object sender, EventArgs e)
         {
             Engine.KeepAlive();
             UpdateClosingTime.Invoke(this, EventArgs.Empty);
             _closingTime = DateTime.Now + Engine.Timeout;
-            _timeout.Text = _startTimeoutLabel + _closingTime.Subtract(DateTime.Now).TotalMinutes.ToString("F0") + " min";
+            Title = $"Static Variable - Will close at {_closingTime.TimeOfDay.Hours.ToString().PadLeft(2, '0')}:{_closingTime.TimeOfDay.Minutes.ToString().PadLeft(2, '0')}";
             SetupLayout();
         }
 
         private void Add_Pressed(object sender, EventArgs e)
         {
-            Engine.KeepAlive();
-            UpdateClosingTime.Invoke(this, EventArgs.Empty);
+            KeepAliveScript(sender, e);
             if (String.IsNullOrWhiteSpace(StaticVariableName.Text))
             {
                 return;
@@ -144,9 +135,7 @@ namespace LogicalLayer_1.StaticVariable
             LayoutDesigner.SetComponentsOnRow(
                 dialog: this,
             row: ++rowNumber,
-                orderedWidgets: new Widget[] { _timeout });
-
-            Show(false);
+                orderedWidgets: new Widget[] { KeepAlive });
         }
     }
 }
